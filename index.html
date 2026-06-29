@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ballistic">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%230d1117' width='100' height='100' rx='18'/%3E%3Ccircle cx='50' cy='50' r='28' fill='none' stroke='%23d4863a' stroke-width='3'/%3E%3Ccircle cx='50' cy='50' r='14' fill='none' stroke='%23d4863a' stroke-width='2'/%3E%3Cline x1='50' y1='10' x2='50' y2='90' stroke='%23d4863a' stroke-width='2.5'/%3E%3Cline x1='10' y1='50' x2='90' y2='50' stroke='%23d4863a' stroke-width='2.5'/%3E%3Ccircle cx='50' cy='50' r='2' fill='%23d4863a'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<title>Ballistic Calculator</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-2: #1c232c;
+  --border: #2a3340;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #d4863a;
+  --accent-soft: rgba(212, 134, 58, 0.15);
+  --good: #3fb950;
+  --bad: #f85149;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.container { max-width: 720px; margin: 0 auto; padding: 16px; }
+header { margin-bottom: 16px; }
+h1 {
+  font-size: 16px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; margin: 0; color: var(--accent);
+}
+.subtitle { color: var(--muted); font-size: 12px; margin-top: 2px; }
+details.settings {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;
+}
+details.settings summary {
+  cursor: pointer; font-size: 12px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+  list-style: none;
+}
+details.settings summary::before {
+  content: "▸"; display: inline-block; margin-right: 6px;
+  transition: transform 0.2s;
+}
+details.settings[open] summary::before { transform: rotate(90deg); }
+details.settings summary::-webkit-details-marker { display: none; }
+.settings-content { padding-top: 12px; }
+.tabs {
+  display: flex; border-bottom: 1px solid var(--border); margin-bottom: 12px;
+}
+.tab {
+  padding: 10px 16px; background: none; border: none;
+  color: var(--muted); font: inherit; font-size: 13px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  cursor: pointer; border-bottom: 2px solid transparent;
+}
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.tab-section { display: none; }
+.tab-section.active { display: block; }
+.panel {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px; margin-bottom: 12px;
+}
+.panel h2 {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; margin: 0 0 12px; color: var(--muted);
+}
+.row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;
+}
+.row.full { grid-template-columns: 1fr; }
+.row.three { grid-template-columns: 1fr 1fr 1fr; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+label { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+input, select {
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--text); padding: 10px;
+  border-radius: 6px; font: inherit;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 14px; width: 100%;
+}
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+.toggle {
+  display: flex; background: var(--panel-2);
+  border: 1px solid var(--border); border-radius: 6px; padding: 2px;
+}
+.toggle button {
+  flex: 1; background: none; border: none; color: var(--muted);
+  padding: 9px 6px; font: inherit; font-size: 13px;
+  cursor: pointer; border-radius: 4px;
+}
+.toggle button.on { background: var(--accent); color: #1a1a1a; font-weight: 600; }
+.btn-primary {
+  width: 100%; background: var(--accent); color: #1a1a1a;
+  border: none; padding: 14px; border-radius: 6px; font: inherit;
+  font-weight: 700; font-size: 13px; letter-spacing: 0.1em;
+  text-transform: uppercase; cursor: pointer; margin-top: 6px;
+}
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-primary:active { filter: brightness(0.95); }
+.results {
+  margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+}
+.adj-block {
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px; padding: 14px; margin-bottom: 10px;
+}
+.adj-label {
+  font-size: 11px; color: var(--muted); letter-spacing: 0.08em;
+  text-transform: uppercase; margin-bottom: 6px;
+}
+.adj-clicks {
+  font-family: ui-monospace, monospace;
+  font-size: 28px; font-weight: 700; color: var(--accent);
+  letter-spacing: -0.02em;
+}
+.adj-clicks .unit {
+  font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 6px;
+}
+.adj-direction {
+  margin-top: 6px; font-size: 14px; color: var(--text);
+}
+.adj-direction strong { color: var(--accent); font-weight: 600; }
+.adj-meta {
+  margin-top: 4px; font-size: 12px; color: var(--muted);
+  font-family: ui-monospace, monospace;
+}
+.help {
+  font-size: 11px; color: var(--muted); font-style: italic; margin-top: 8px;
+}
+.error {
+  color: var(--bad); font-size: 13px; margin-top: 10px;
+  padding: 10px; background: rgba(248,81,73,0.1);
+  border-radius: 6px; border-left: 3px solid var(--bad);
+}
+.no-result {
+  color: var(--muted); font-size: 13px; text-align: center;
+  padding: 20px 0; font-style: italic;
+}
+table {
+  width: 100%; font-family: ui-monospace, monospace;
+  font-size: 12px; border-collapse: collapse; margin-top: 8px;
+}
+th, td { text-align: right; padding: 7px 6px; border-bottom: 1px solid var(--border); }
+th {
+  color: var(--muted); font-weight: 500; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+td:first-child, th:first-child { text-align: left; color: var(--accent); }
+.scroll-x { overflow-x: auto; }
+details.bc-derive {
+  margin-top: 10px; padding: 10px 12px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 6px;
+}
+details.bc-derive summary {
+  cursor: pointer; list-style: none;
+  font-size: 12px; color: var(--muted);
+  letter-spacing: 0.04em;
+}
+details.bc-derive summary::-webkit-details-marker { display: none; }
+details.bc-derive summary::before {
+  content: "▸"; display: inline-block; margin-right: 6px;
+  transition: transform 0.2s; color: var(--muted);
+}
+details.bc-derive[open] summary::before { transform: rotate(90deg); }
+details.bc-derive[open] summary { margin-bottom: 10px; }
+.bcd-content > .help { margin-bottom: 10px; }
+.bcd-result-block {
+  margin-top: 10px; padding: 12px;
+  background: var(--panel); border-radius: 6px;
+  border-left: 3px solid var(--good);
+}
+.bcd-result-block .val {
+  font-family: ui-monospace, monospace;
+  font-size: 24px; font-weight: 700; color: var(--accent);
+}
+.btn-secondary {
+  background: transparent; border: 1px solid var(--accent);
+  color: var(--accent); padding: 8px 14px; border-radius: 5px;
+  font: inherit; font-size: 12px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  cursor: pointer; margin-top: 10px;
+}
+.btn-secondary:hover { background: var(--accent-soft); }
+.wind-clock-wrapper {
+  display: flex; flex-direction: column; align-items: center;
+  margin-top: 8px;
+}
+#wind-clock-svg {
+  width: 100%; max-width: 260px; height: auto;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+  cursor: pointer;
+}
+#wind-arrow { pointer-events: none; }
+.wind-clock-help {
+  font-size: 11px; color: var(--muted); font-style: italic;
+  margin-top: 6px; text-align: center;
+}
+.wind-readout {
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px;
+  display: flex; align-items: baseline; gap: 8px;
+  font-family: ui-monospace, monospace;
+}
+.wind-readout #wind-clock-display {
+  font-size: 16px; font-weight: 700; color: var(--accent);
+}
+.wind-readout .wind-degrees {
+  font-size: 12px; color: var(--muted);
+}
+@media (max-width: 480px) {
+  .row, .row.three { grid-template-columns: 1fr; }
+  .container { padding: 12px; }
+  h1 { font-size: 14px; }
+}
+footer {
+  text-align: center; color: var(--muted);
+  font-size: 11px; margin: 24px 0 8px; line-height: 1.6;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Ballistic Calculator</h1>
+    <div class="subtitle">G1 drag model · imperial · offline</div>
+  </header>
+
+  <details class="settings" id="settings-panel">
+    <summary>Scope settings</summary>
+    <div class="settings-content">
+      <div class="row">
+        <div class="field">
+          <label>Click value</label>
+          <select id="click-value">
+            <option value="0.25" selected>1/4 MOA</option>
+            <option value="0.125">1/8 MOA</option>
+            <option value="0.5">1/2 MOA</option>
+            <option value="1">1 MOA</option>
+            <option value="0.343775">0.1 MRAD (≈0.344 MOA)</option>
+            <option value="0.171887">0.05 MRAD</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Adjustment readout</label>
+          <select id="display-unit">
+            <option value="moa" selected>MOA</option>
+            <option value="mil">MIL</option>
+            <option value="inches">Inches @ range</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Elevation turret: which way is UP?</label>
+          <select id="elev-convention">
+            <option value="ccw" selected>CCW (viewed from top)</option>
+            <option value="cw">CW (viewed from top)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Windage turret: which way is RIGHT?</label>
+          <select id="wind-convention">
+            <option value="ccw" selected>CCW (viewed from right side)</option>
+            <option value="cw">CW (viewed from right side)</option>
+          </select>
+        </div>
+      </div>
+      <div class="help">Most modern scopes follow CCW = UP / CCW = RIGHT. Check the arrows on your turrets if unsure.</div>
+    </div>
+  </details>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="sightin">Sight-In</button>
+    <button class="tab" data-tab="ballistic">Ballistic</button>
+    <button class="tab" data-tab="convert">Convert</button>
+  </div>
+
+  <!-- ========== SIGHT-IN ========== -->
+  <section id="sightin" class="tab-section active">
+    <div class="panel">
+      <h2>POI Offset → Adjustment</h2>
+      <div class="row">
+        <div class="field">
+          <label>Distance to target (yd)</label>
+          <input type="number" id="si-distance" value="100" min="1" step="1">
+        </div>
+        <div class="field">
+          <label>Group size (in, optional)</label>
+          <input type="number" id="si-group" value="1" step="0.1" min="0">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Vertical offset (in)</label>
+          <input type="number" id="si-vert" value="0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label>POI is</label>
+          <div class="toggle" data-toggle="si-vert-dir">
+            <button class="on" data-value="low">Low</button>
+            <button data-value="high">High</button>
+          </div>
+          <input type="hidden" id="si-vert-dir" value="low">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Horizontal offset (in)</label>
+          <input type="number" id="si-horiz" value="0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label>POI is</label>
+          <div class="toggle" data-toggle="si-horiz-dir">
+            <button class="on" data-value="left">Left</button>
+            <button data-value="right">Right</button>
+          </div>
+          <input type="hidden" id="si-horiz-dir" value="left">
+        </div>
+      </div>
+      <button class="btn-primary" id="si-calc">Calculate Adjustment</button>
+      <div class="results" id="si-results">
+        <div class="no-result">Enter POI offset and tap calculate.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== BALLISTIC ========== -->
+  <section id="ballistic" class="tab-section">
+    <div class="panel">
+      <h2>Profile</h2>
+      <div class="row">
+        <div class="field">
+          <label>Active profile</label>
+          <select id="profile-select"></select>
+        </div>
+        <div class="field">
+          <label>Profile name</label>
+          <input type="text" id="profile-name" placeholder="e.g. .243 95gr SST">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <button class="btn-secondary" id="profile-load" style="margin-top:0;">Load</button>
+        </div>
+        <div class="field">
+          <button class="btn-secondary" id="profile-save" style="margin-top:0;">Save Current</button>
+        </div>
+      </div>
+      <div class="help">5 slots, stored locally on this device. "Save Current" writes the active load + zero + vital zone into the selected slot.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Load &amp; Optic</h2>
+      <div class="row">
+        <div class="field">
+          <label>Muzzle velocity (fps)</label>
+          <input type="number" id="b-mv" value="3185" step="10">
+        </div>
+        <div class="field">
+          <label>BC (G1)</label>
+          <input type="number" id="b-bc" value="0.200" step="0.001" min="0.05">
+        </div>
+      </div>
+      <details class="bc-derive">
+        <summary>Don't trust the published BC? Derive from chrono data</summary>
+        <div class="bcd-content">
+          <div class="help">Two-point chrono measurement (e.g. LabRadar / Garmin Xero) gives a true G1 BC for this load. Set the atmospherics below to match your chrono session before deriving.</div>
+          <div class="row">
+            <div class="field">
+              <label>Muzzle velocity (fps)</label>
+              <input type="number" id="bcd-v1" value="3185" step="1">
+            </div>
+            <div class="field">
+              <label>Velocity downrange (fps)</label>
+              <input type="number" id="bcd-v2" value="2649" step="1">
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Distance to V2 (yd)</label>
+              <input type="number" id="bcd-dist" value="200" step="25" min="25">
+            </div>
+            <div class="field" style="justify-content:flex-end;">
+              <button class="btn-primary" id="bcd-calc" style="margin-top:0;">Derive BC</button>
+            </div>
+          </div>
+          <div id="bcd-result"></div>
+        </div>
+      </details>
+      <div class="row">
+        <div class="field">
+          <label>Bullet weight (gr)</label>
+          <input type="number" id="b-weight" value="95" step="1" min="1">
+        </div>
+        <div class="field">
+          <label>Sight height (in)</label>
+          <input type="number" id="b-sight-height" value="1.5" step="0.05">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Zero range (yd)</label>
+          <input type="number" id="b-zero" value="200" step="25" min="10">
+        </div>
+        <div class="field">
+          <label>Target range (yd)</label>
+          <input type="number" id="b-range" value="300" step="25" min="1">
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Atmospherics</h2>
+      <div class="row three">
+        <div class="field">
+          <label>Temperature (°C)</label>
+          <input type="number" id="b-temp" value="15" step="1">
+        </div>
+        <div class="field">
+          <label>Pressure (inHg)</label>
+          <input type="number" id="b-pressure" value="29.92" step="0.01">
+        </div>
+        <div class="field">
+          <label>Humidity (%)</label>
+          <input type="number" id="b-humidity" value="50" step="5" min="0" max="100">
+        </div>
+      </div>
+      <div class="help">Use station pressure (uncorrected), not sea-level. Defaults are ICAO standard.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Wind</h2>
+      <div class="row">
+        <div class="field">
+          <label>Wind speed (mph)</label>
+          <input type="number" id="b-wind-speed" value="10" step="1" min="0">
+        </div>
+        <div class="field">
+          <label>Wind from</label>
+          <div class="wind-readout">
+            <span id="wind-clock-display">3 o'clock</span>
+            <span class="wind-degrees" id="wind-deg-display">90°</span>
+          </div>
+        </div>
+      </div>
+      <div class="wind-clock-wrapper">
+        <svg id="wind-clock-svg" viewBox="0 0 220 220">
+          <!-- outer ring -->
+          <circle cx="110" cy="110" r="100" fill="var(--panel-2)" stroke="var(--border)" stroke-width="1.5"/>
+          <!-- inner subtle ring -->
+          <circle cx="110" cy="110" r="80" fill="none" stroke="var(--border)" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5"/>
+          <!-- crosshair -->
+          <line x1="110" y1="20" x2="110" y2="200" stroke="var(--border)" stroke-width="0.8" opacity="0.4"/>
+          <line x1="20" y1="110" x2="200" y2="110" stroke="var(--border)" stroke-width="0.8" opacity="0.4"/>
+          <!-- hour ticks (generated in JS) -->
+          <g id="wind-clock-ticks"></g>
+          <!-- hour labels (generated in JS) -->
+          <g id="wind-clock-labels"></g>
+          <!-- DOWNRANGE label -->
+          <text x="110" y="14" text-anchor="middle" font-size="8" fill="var(--accent)" font-weight="700" letter-spacing="1.5">↑ DOWNRANGE</text>
+          <text x="110" y="216" text-anchor="middle" font-size="7" fill="var(--muted)" letter-spacing="1">SHOOTER</text>
+          <!-- wind arrow (rotates around 110,110) -->
+          <g id="wind-arrow" transform="rotate(90 110 110)">
+            <!-- shaft -->
+            <line x1="110" y1="110" x2="110" y2="34" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"/>
+            <!-- arrowhead -->
+            <polygon points="110,18 98,40 122,40" fill="var(--accent)" stroke="var(--accent)" stroke-width="1" stroke-linejoin="round"/>
+          </g>
+          <!-- pivot dot -->
+          <circle cx="110" cy="110" r="4" fill="var(--accent)" stroke="var(--bg)" stroke-width="1.5"/>
+        </svg>
+        <div class="wind-clock-help">Tap or drag the clock face to point the arrow at where the wind is coming from.</div>
+      </div>
+      <input type="hidden" id="b-wind-clock" value="3">
+    </div>
+
+    <div class="panel">
+      <h2>Hunting Profile</h2>
+      <div class="row">
+        <div class="field">
+          <label>Vital zone radius</label>
+          <select id="b-vital">
+            <option value="2">2" — small game / fox</option>
+            <option value="3">3" — roe / muntjac</option>
+            <option value="4" selected>4" — fallow / red deer (8" kill zone)</option>
+            <option value="5">5" — large red / sika (10" kill zone)</option>
+            <option value="6">6" — boar / elk-sized</option>
+          </select>
+        </div>
+      </div>
+      <div class="help">Sets the hold-centre tolerance. The result will tell you the maximum range you can hold dead-centre and still strike the kill zone.</div>
+    </div>
+
+    <button class="btn-primary" id="b-calc">Compute Trajectory</button>
+    <div class="results" id="b-results">
+      <div class="no-result">Set inputs and tap compute.</div>
+    </div>
+  </section>
+
+  <!-- ========== CONVERT ========== -->
+  <section id="convert" class="tab-section">
+    <div class="panel">
+      <h2>Distance</h2>
+      <div class="row">
+        <div class="field"><label>Yards</label><input type="number" id="cv-yd" step="any"></div>
+        <div class="field"><label>Metres</label><input type="number" id="cv-m" step="any"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Velocity</h2>
+      <div class="row">
+        <div class="field"><label>fps</label><input type="number" id="cv-fps" step="any"></div>
+        <div class="field"><label>m/s</label><input type="number" id="cv-mps" step="any"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Mass / Bullet weight</h2>
+      <div class="row">
+        <div class="field"><label>Grains</label><input type="number" id="cv-gr" step="any"></div>
+        <div class="field"><label>Grams</label><input type="number" id="cv-g" step="any"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Energy</h2>
+      <div class="row">
+        <div class="field"><label>ft·lb</label><input type="number" id="cv-ftlb" step="any"></div>
+        <div class="field"><label>Joules</label><input type="number" id="cv-j" step="any"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Length (small)</h2>
+      <div class="row">
+        <div class="field"><label>Inches</label><input type="number" id="cv-in" step="any"></div>
+        <div class="field"><label>Millimetres</label><input type="number" id="cv-mm" step="any"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Pressure</h2>
+      <div class="row">
+        <div class="field"><label>inHg</label><input type="number" id="cv-inhg" step="any"></div>
+        <div class="field"><label>hPa (mb)</label><input type="number" id="cv-hpa" step="any"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Temperature</h2>
+      <div class="row">
+        <div class="field"><label>°C</label><input type="number" id="cv-c" step="any"></div>
+        <div class="field"><label>°F</label><input type="number" id="cv-f" step="any"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Angular at range</h2>
+      <div class="row">
+        <div class="field">
+          <label>Range (yd)</label>
+          <input type="number" id="cv-ang-range" value="100" step="25" min="1">
+        </div>
+      </div>
+      <div class="row three">
+        <div class="field"><label>MOA</label><input type="number" id="cv-moa" step="any"></div>
+        <div class="field"><label>MIL</label><input type="number" id="cv-mil" step="any"></div>
+        <div class="field"><label>Inches</label><input type="number" id="cv-ang-in" step="any"></div>
+      </div>
+      <div class="help">True MOA (1.047" / 100 yd), not "shooter's MOA" (exactly 1" / 100 yd). 1 MIL = 3.6" / 100 yd.</div>
+    </div>
+  </section>
+
+  <footer>
+    G1 point-mass model with iterative zero-finder. Uses constant BC. <br>
+    For long range or unusual bullets, verify against drop charts and confirm at the range.<br>
+    Not for use in lieu of actual confirmation fire.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   G1 STANDARD DRAG TABLE (Mach, Cd) — McCoy reference
+   ============================================================ */
+const G1_TABLE = [
+  [0.00, 0.2629], [0.50, 0.2589], [0.60, 0.2630], [0.70, 0.2820],
+  [0.80, 0.3170], [0.825, 0.3260], [0.85, 0.3360], [0.875, 0.3445],
+  [0.90, 0.3530], [0.925, 0.3624], [0.95, 0.3884], [0.975, 0.4275],
+  [1.00, 0.4742], [1.025, 0.5044], [1.05, 0.5172], [1.075, 0.5223],
+  [1.10, 0.5224], [1.125, 0.5198], [1.15, 0.5158], [1.20, 0.5054],
+  [1.30, 0.4787], [1.40, 0.4525], [1.50, 0.4329], [1.60, 0.4144],
+  [1.80, 0.3826], [2.00, 0.3534], [2.20, 0.3289], [2.40, 0.3068],
+  [2.50, 0.2962], [3.00, 0.2484], [3.50, 0.2197], [4.00, 0.2031],
+  [4.50, 0.1928], [5.00, 0.1855],
+];
+
+function g1Cd(mach) {
+  if (mach <= G1_TABLE[0][0]) return G1_TABLE[0][1];
+  if (mach >= G1_TABLE[G1_TABLE.length - 1][0]) return G1_TABLE[G1_TABLE.length - 1][1];
+  for (let i = 0; i < G1_TABLE.length - 1; i++) {
+    const [m1, c1] = G1_TABLE[i], [m2, c2] = G1_TABLE[i + 1];
+    if (mach >= m1 && mach <= m2) {
+      const t = (mach - m1) / (m2 - m1);
+      return c1 + t * (c2 - c1);
+    }
+  }
+  return G1_TABLE[G1_TABLE.length - 1][1];
+}
+
+/* ============================================================
+   ATMOSPHERE
+   ============================================================ */
+function airDensityRatio(tempF, pressureInHg, humidityPct) {
+  // Standard: 59°F, 29.92 inHg, 0% RH (ICAO-ish)
+  const tempR = tempF + 459.67;
+  const stdTempR = 518.67;
+  const stdP = 29.92;
+  // Saturation vapor pressure (inHg) — Tetens approximation
+  const tC = (tempF - 32) * 5 / 9;
+  const psat_mb = 6.1078 * Math.exp((17.27 * tC) / (tC + 237.3));
+  const psat_inHg = psat_mb * 0.02953;
+  const pv = (humidityPct / 100) * psat_inHg;       // partial pressure of water vapor
+  const pd = pressureInHg - pv;                      // partial pressure of dry air
+  // Density ratio with humidity correction:
+  // ρ ∝ (Pd / Rd + Pv / Rv) / T  →  ratio vs std (dry, 59F, 29.92)
+  const ratio = ((pd / stdP) + (pv / stdP) * (18.016 / 28.964)) * (stdTempR / tempR);
+  return ratio;
+}
+
+function speedOfSound(tempF) {
+  const tempR = tempF + 459.67;
+  return 49.0223 * Math.sqrt(tempR);   // fps
+}
+
+/* ============================================================
+   POINT-MASS TRAJECTORY (G1, constant BC)
+   Coordinates: +x = downrange (ft), +y = right (ft), +z = up (ft)
+   ============================================================ */
+const K_DRAG = 0.0002083;   // English-unit drag constant
+
+function step(state, params, dt) {
+  const { vx, vy, vz } = state;
+  const { wx, wy, densRatio, sos, bc } = params;
+
+  // velocity relative to air
+  const rvx = vx - wx;
+  const rvy = vy - wy;
+  const rvz = vz;
+  const vRel = Math.sqrt(rvx * rvx + rvy * rvy + rvz * rvz);
+  const mach = vRel / sos;
+  const cd = g1Cd(mach);
+
+  // drag deceleration magnitude per unit speed: K * dens * Cd * Vrel / BC
+  const k = K_DRAG * densRatio * cd * vRel / bc;
+  const ax = -k * rvx;
+  const ay = -k * rvy;
+  const az = -k * rvz - 32.174;   // gravity in -z
+
+  return {
+    x: state.x + vx * dt + 0.5 * ax * dt * dt,
+    y: state.y + vy * dt + 0.5 * ay * dt * dt,
+    z: state.z + vz * dt + 0.5 * az * dt * dt,
+    vx: vx + ax * dt,
+    vy: vy + ay * dt,
+    vz: vz + az * dt,
+  };
+}
+
+function simulate(launchAngleRad, mv, params, sightHeightFt, stopAtRangeFt) {
+  // Bullet starts at bore axis: position (0, 0, -sightHeight) so that line-of-sight is z=0.
+  let s = {
+    x: 0, y: 0, z: -sightHeightFt,
+    vx: mv * Math.cos(launchAngleRad),
+    vy: 0,
+    vz: mv * Math.sin(launchAngleRad),
+  };
+  const dt = 0.0005;
+  let t = 0;
+  const samples = [s];
+  while (s.x < stopAtRangeFt) {
+    s = step(s, params, dt);
+    t += dt;
+    if (t > 30 || s.vx < 50) break;   // safety
+  }
+  return { final: s, time: t };
+}
+
+function findZeroAngle(mv, bc, sightHeightFt, zeroRangeFt, params) {
+  // Binary-search the launch angle so that z = 0 at zeroRangeFt.
+  let lo = -0.005, hi = 0.05;
+  for (let iter = 0; iter < 60; iter++) {
+    const mid = (lo + hi) / 2;
+    const r = simulate(mid, mv, params, sightHeightFt, zeroRangeFt);
+    if (r.final.z > 0) hi = mid; else lo = mid;
+    if (Math.abs(hi - lo) < 1e-7) break;
+  }
+  return (lo + hi) / 2;
+}
+
+/* ============================================================
+   PUBLIC: trajectory at target range
+   ============================================================ */
+function computeTrajectory(opts) {
+  const {
+    mv, bc, weightGr, sightHeightIn,
+    zeroYd, targetYd,
+    tempF, pressureInHg, humidityPct,
+    windMph, windClock,
+  } = opts;
+
+  const sos = speedOfSound(tempF);
+  const densRatio = airDensityRatio(tempF, pressureInHg, humidityPct);
+
+  // Wind from clock position. 12 = headwind, 3 = right→left, 6 = tailwind, 9 = left→right.
+  // Clockwise angle from +x (downrange) to FROM direction:
+  const theta = ((windClock % 12) / 12) * 2 * Math.PI;
+  const windFps = windMph * 1.46667;
+  const wx = -windFps * Math.cos(theta);   // velocity component downrange
+  const wy = -windFps * Math.sin(theta);   // velocity component right(+)/left(−)
+
+  const params = { wx, wy, densRatio, sos, bc };
+  const sightHeightFt = sightHeightIn / 12;
+  const zeroFt = zeroYd * 3;
+  const targetFt = targetYd * 3;
+
+  // Step 1: find zero angle
+  const angle = findZeroAngle(mv, bc, sightHeightFt, zeroFt, params);
+
+  // Step 2: simulate to target range
+  const { final, time } = simulate(angle, mv, params, sightHeightFt, targetFt);
+
+  // Outputs
+  const dropIn = -final.z * 12;          // inches below LOS (positive = below)
+  const driftIn = final.y * 12;          // positive = right
+  const velocityFps = Math.sqrt(final.vx * final.vx + final.vy * final.vy + final.vz * final.vz);
+  const energyFtLb = 0.5 * (weightGr / 7000 / 32.174) * velocityFps * velocityFps;
+
+  return {
+    drop_in: dropIn,
+    drift_in: driftIn,
+    velocity_fps: velocityFps,
+    energy_ftlb: energyFtLb,
+    tof_s: time,
+    launch_angle_moa: angle * (60 * 180 / Math.PI),
+    range_yd: targetYd,
+  };
+}
+
+/* ============================================================
+   UNIT CONVERSIONS
+   1 MOA at R yards = 1.047 * R / 100 inches (true MOA, not "shooter's MOA")
+   1 MIL at R yards = 3.6 * R / 100 inches
+   ============================================================ */
+function inchesToMOA(inches, rangeYd) {
+  return inches / (1.047 * rangeYd / 100);
+}
+function inchesToMIL(inches, rangeYd) {
+  return inches / (3.6 * rangeYd / 100);
+}
+function moaToInches(moa, rangeYd) {
+  return moa * 1.047 * rangeYd / 100;
+}
+
+/* ============================================================
+   CLICKS + DIRECTION
+   adjustmentSign convention:
+     elevation: positive = UP (need to raise POI)
+     windage:   positive = RIGHT (need to move POI right)
+   ============================================================ */
+function turretRotation(axis, sign) {
+  // axis: 'elev' or 'wind'
+  // sign: +1 = need UP / RIGHT, -1 = need DOWN / LEFT
+  const conv = axis === 'elev'
+    ? document.getElementById('elev-convention').value
+    : document.getElementById('wind-convention').value;
+  // conv = 'ccw' means CCW produces the positive direction (UP or RIGHT).
+  // So if sign=+1, rotate in the conv direction; if sign=-1, opposite.
+  const positiveDir = conv;   // 'ccw' or 'cw'
+  const negativeDir = conv === 'ccw' ? 'cw' : 'ccw';
+  const dir = sign > 0 ? positiveDir : negativeDir;
+  return dir === 'ccw' ? 'counter-clockwise' : 'clockwise';
+}
+
+function buildAdjustment(axis, neededInches, rangeYd) {
+  // neededInches: signed (+ up/right). 0 means none.
+  const clickValue = parseFloat(document.getElementById('click-value').value);   // in MOA
+  const displayUnit = document.getElementById('display-unit').value;
+  const moa = inchesToMOA(neededInches, rangeYd);
+  const clicksRaw = moa / clickValue;
+  const clicks = Math.round(clicksRaw);
+  const sign = neededInches >= 0 ? 1 : -1;
+
+  let valueStr, unitStr;
+  if (displayUnit === 'moa') {
+    valueStr = Math.abs(moa).toFixed(2);
+    unitStr = 'MOA';
+  } else if (displayUnit === 'mil') {
+    valueStr = Math.abs(inchesToMIL(neededInches, rangeYd)).toFixed(2);
+    unitStr = 'MIL';
+  } else {
+    valueStr = Math.abs(neededInches).toFixed(2);
+    unitStr = `in @ ${rangeYd}yd`;
+  }
+
+  let directionWord;
+  if (Math.abs(clicksRaw) < 0.5) {
+    directionWord = 'No adjustment needed';
+  } else if (axis === 'elev') {
+    directionWord = sign > 0 ? 'UP' : 'DOWN';
+  } else {
+    directionWord = sign > 0 ? 'RIGHT' : 'LEFT';
+  }
+
+  const rotation = Math.abs(clicksRaw) < 0.5 ? '' : turretRotation(axis, sign);
+  const arrowMark = axis === 'elev'
+    ? (sign > 0 ? 'U' : 'D')
+    : (sign > 0 ? 'R' : 'L');
+
+  return { clicks: Math.abs(clicks), clicksRaw: clicksRaw, valueStr, unitStr,
+           directionWord, rotation, arrowMark, sign };
+}
+
+/* ============================================================
+   RENDER HELPERS
+   ============================================================ */
+function adjBlock(title, adj) {
+  if (!adj.clicks || Math.abs(adj.clicksRaw) < 0.5) {
+    return `
+      <div class="adj-block">
+        <div class="adj-label">${title}</div>
+        <div class="adj-clicks">0 <span class="unit">clicks</span></div>
+        <div class="adj-direction">No adjustment needed</div>
+      </div>`;
+  }
+  return `
+    <div class="adj-block">
+      <div class="adj-label">${title}</div>
+      <div class="adj-clicks">${adj.clicks} <span class="unit">clicks ${adj.directionWord}</span></div>
+      <div class="adj-direction">
+        Turn turret <strong>${adj.rotation}</strong>
+        (toward "${adj.arrowMark}" mark)
+      </div>
+      <div class="adj-meta">
+        ${adj.valueStr} ${adj.unitStr} · raw: ${adj.clicksRaw.toFixed(2)} clicks
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   DERIVE BC FROM TWO-POINT CHRONO DATA
+   ============================================================ */
+function deriveBC(v1, v2, distYd, tempF, pressureInHg, humidityPct) {
+  const sos = speedOfSound(tempF);
+  const densRatio = airDensityRatio(tempF, pressureInHg, humidityPct);
+  const stopFt = distYd * 3;
+
+  function velAtDistance(bc) {
+    const params = { wx: 0, wy: 0, densRatio, sos, bc };
+    let s = { x: 0, y: 0, z: 0, vx: v1, vy: 0, vz: 0 };
+    const dt = 0.0005;
+    let t = 0;
+    while (s.x < stopFt) {
+      s = step(s, params, dt);
+      t += dt;
+      if (t > 10 || s.vx < 50) break;
+    }
+    return Math.sqrt(s.vx * s.vx + s.vy * s.vy + s.vz * s.vz);
+  }
+
+  // Higher BC → less drag → higher V at distance.
+  let lo = 0.02, hi = 3.0;
+  if (velAtDistance(hi) < v2) return null;
+  if (velAtDistance(lo) > v2) return null;
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    if (velAtDistance(mid) > v2) hi = mid; else lo = mid;
+    if (Math.abs(hi - lo) < 1e-5) break;
+  }
+  return (lo + hi) / 2;
+}
+
+document.getElementById('bcd-calc').addEventListener('click', () => {
+  const v1 = parseFloat(document.getElementById('bcd-v1').value);
+  const v2 = parseFloat(document.getElementById('bcd-v2').value);
+  const dist = parseFloat(document.getElementById('bcd-dist').value);
+  const tempF = parseFloat(document.getElementById('b-temp').value) * 9/5 + 32;
+  const press = parseFloat(document.getElementById('b-pressure').value);
+  const hum = parseFloat(document.getElementById('b-humidity').value);
+  const out = document.getElementById('bcd-result');
+
+  if (!v1 || !v2 || !dist) {
+    out.innerHTML = `<div class="error">Enter MV, downrange velocity and distance.</div>`;
+    return;
+  }
+  if (v2 >= v1) {
+    out.innerHTML = `<div class="error">Downrange velocity must be lower than muzzle velocity.</div>`;
+    return;
+  }
+  if (dist <= 0) {
+    out.innerHTML = `<div class="error">Distance must be positive.</div>`;
+    return;
+  }
+
+  const bc = deriveBC(v1, v2, dist, tempF, press, hum);
+  if (bc === null || !isFinite(bc)) {
+    out.innerHTML = `<div class="error">Could not converge on a BC. Check inputs &mdash; the velocity loss may be unrealistic for the stated distance and atmosphere.</div>`;
+    return;
+  }
+
+  out.innerHTML = `
+    <div class="bcd-result-block">
+      <div class="adj-label">Derived G1 BC</div>
+      <div class="val">${bc.toFixed(3)}</div>
+      <div class="adj-meta" style="margin-top:6px;">
+        Best-fit constant BC for ${v1.toFixed(0)} → ${v2.toFixed(0)} fps over ${dist} yd<br>
+        Most accurate when used near this velocity band.
+      </div>
+      <button class="btn-secondary" id="bcd-apply">Apply to BC field above</button>
+    </div>`;
+  document.getElementById('bcd-apply').addEventListener('click', () => {
+    document.getElementById('b-bc').value = bc.toFixed(3);
+    document.getElementById('bcd-apply').textContent = 'Applied ✓';
+  });
+});
+
+/* ============================================================
+   SIGHT-IN HANDLER
+   ============================================================ */
+document.getElementById('si-calc').addEventListener('click', () => {
+  const dist = parseFloat(document.getElementById('si-distance').value);
+  const vert = parseFloat(document.getElementById('si-vert').value) || 0;
+  const horiz = parseFloat(document.getElementById('si-horiz').value) || 0;
+  const vertDir = document.getElementById('si-vert-dir').value;     // low / high
+  const horizDir = document.getElementById('si-horiz-dir').value;   // left / right
+  const out = document.getElementById('si-results');
+
+  if (!dist || dist <= 0) {
+    out.innerHTML = `<div class="error">Enter a positive distance.</div>`;
+    return;
+  }
+
+  // POI is "low" → need to move POI UP → elevation correction is +
+  // POI is "left" → need to move POI RIGHT → windage correction is +
+  const elevCorrectionIn = vertDir === 'low' ? +vert : -vert;
+  const windCorrectionIn = horizDir === 'left' ? +horiz : -horiz;
+
+  const elev = buildAdjustment('elev', elevCorrectionIn, dist);
+  const wind = buildAdjustment('wind', windCorrectionIn, dist);
+
+  out.innerHTML = adjBlock(`Elevation @ ${dist}yd`, elev)
+                + adjBlock(`Windage @ ${dist}yd`, wind);
+});
+
+/* ============================================================
+   BALLISTIC HANDLER
+   ============================================================ */
+document.getElementById('b-calc').addEventListener('click', () => {
+  const v = id => parseFloat(document.getElementById(id).value);
+  const opts = {
+    mv: v('b-mv'),
+    bc: v('b-bc'),
+    weightGr: v('b-weight'),
+    sightHeightIn: v('b-sight-height'),
+    zeroYd: v('b-zero'),
+    targetYd: v('b-range'),
+    tempF: v('b-temp') * 9/5 + 32,
+    pressureInHg: v('b-pressure'),
+    humidityPct: v('b-humidity'),
+    windMph: v('b-wind-speed'),
+    windClock: parseFloat(document.getElementById('b-wind-clock').value),
+  };
+  const out = document.getElementById('b-results');
+
+  for (const [k, val] of Object.entries(opts)) {
+    if (Number.isNaN(val)) {
+      out.innerHTML = `<div class="error">Missing or invalid input: ${k}</div>`;
+      return;
+    }
+  }
+  if (opts.bc <= 0 || opts.mv <= 0 || opts.targetYd <= 0) {
+    out.innerHTML = `<div class="error">BC, MV and range must be positive.</div>`;
+    return;
+  }
+
+  let result;
+  try {
+    result = computeTrajectory(opts);
+  } catch (e) {
+    out.innerHTML = `<div class="error">Calculation failed: ${e.message}</div>`;
+    return;
+  }
+
+  // Drop is positive when bullet is BELOW LOS → need to move POI UP → elev correction = +drop
+  // Drift is positive when bullet has drifted RIGHT → need to move POI LEFT → wind correction = -drift
+  const elev = buildAdjustment('elev', result.drop_in, opts.targetYd);
+  const wind = buildAdjustment('wind', -result.drift_in, opts.targetYd);
+
+  // Build trajectory table at every 25 yd up to target (finer granularity for field use)
+  const rows = [];
+  const stops = [];
+  const stepYd = 25;
+  for (let r = stepYd; r < opts.targetYd; r += stepYd) stops.push(r);
+  stops.push(opts.targetYd);
+  for (const r of stops) {
+    const t = computeTrajectory({ ...opts, targetYd: r });
+    rows.push(`<tr>
+      <td>${r}</td>
+      <td>${t.velocity_fps.toFixed(0)}</td>
+      <td>${t.drop_in.toFixed(1)}</td>
+      <td>${inchesToMOA(t.drop_in, r).toFixed(1)}</td>
+      <td>${t.drift_in.toFixed(1)}</td>
+      <td>${inchesToMOA(t.drift_in, r).toFixed(1)}</td>
+      <td>${t.tof_s.toFixed(2)}</td>
+    </tr>`);
+  }
+
+  // Holdover reference: for each common holdover value, find the range where the
+  // bullet drops by that many inches below LOS (after the zero).
+  function findRangeForDrop(targetDropIn) {
+    let lo = opts.zeroYd, hi = 1500;
+    const dropAtHi = computeTrajectory({ ...opts, targetYd: hi }).drop_in;
+    if (dropAtHi < targetDropIn) return null;
+    for (let i = 0; i < 30; i++) {
+      const mid = (lo + hi) / 2;
+      const d = computeTrajectory({ ...opts, targetYd: mid }).drop_in;
+      if (d > targetDropIn) hi = mid; else lo = mid;
+      if (Math.abs(hi - lo) < 0.5) break;
+    }
+    return Math.round((lo + hi) / 2);
+  }
+
+  // Hunting profile: vital zone radius dictates hold-centre tolerance and filters card
+  const vitalRadius = parseFloat(document.getElementById('b-vital').value);
+
+  // Maximum Point Blank Range (MPBR): far range where drop = vital_radius
+  // (i.e. last range where holding centre still strikes within the kill zone)
+  const mpbrFar = findRangeForDrop(vitalRadius);
+
+  // Filter holdovers to start at the smallest meaningful value for this vital zone.
+  // Round up vital_radius to the next holdover increment.
+  const allHoldovers = [3, 4, 5, 6, 8, 10, 12, 15, 18, 24, 30, 36, 48];
+  const holdoverInches = allHoldovers.filter(h => h >= Math.ceil(vitalRadius));
+  const holdoverRows = [];
+  for (const h of holdoverInches) {
+    const r = findRangeForDrop(h);
+    if (r === null) continue;
+    if (r > opts.targetYd + 200) break;
+    const moa = inchesToMOA(h, r);
+    holdoverRows.push(`<tr><td>${h}"</td><td>${r}</td><td>${moa.toFixed(1)}</td></tr>`);
+  }
+  const holdoverTable = holdoverRows.length === 0
+    ? '<div class="adj-meta">No holdover values reached at this trajectory.</div>'
+    : `<div class="scroll-x"><table>
+         <thead><tr><th>Hold over</th><th>Range (yd)</th><th>≈ MOA</th></tr></thead>
+         <tbody>${holdoverRows.join('')}</tbody>
+       </table></div>
+       <div class="adj-meta" style="margin-top:8px;">Aim this many inches above the bullseye to put the bullet on POA at the listed range.</div>`;
+
+  // MPBR block — the headline for hunting use
+  const mpbrBlock = mpbrFar === null
+    ? ''
+    : `<div class="adj-block" style="border-left-color: var(--good);">
+         <div class="adj-label">Maximum point-blank range</div>
+         <div class="adj-clicks" style="font-size:24px;">Hold centre: 0 → ${mpbrFar} yd</div>
+         <div class="adj-direction" style="margin-top:6px;">
+           Within a ${vitalRadius}" vital radius (${vitalRadius * 2}" kill zone) using your ${opts.zeroYd} yd zero.
+         </div>
+         <div class="adj-meta" style="margin-top:6px;">
+           Beyond ${mpbrFar} yd, use the holdover card below.
+         </div>
+       </div>`;
+
+  out.innerHTML = `
+    ${mpbrBlock}
+    ${adjBlock(`Elevation @ ${opts.targetYd}yd`, elev)}
+    ${adjBlock(`Windage @ ${opts.targetYd}yd`, wind)}
+    <div class="adj-block">
+      <div class="adj-label">Solution summary</div>
+      <div class="adj-meta" style="font-size:13px;line-height:1.8;">
+        Drop: <strong>${result.drop_in.toFixed(1)}"</strong> below LOS<br>
+        Wind drift: <strong>${result.drift_in.toFixed(1)}"</strong>
+          ${result.drift_in >= 0 ? 'right' : 'left'}<br>
+        Velocity at target: <strong>${result.velocity_fps.toFixed(0)} fps</strong><br>
+        Energy at target: <strong>${result.energy_ftlb.toFixed(0)} ft·lb</strong><br>
+        Time of flight: <strong>${result.tof_s.toFixed(2)} s</strong>
+      </div>
+    </div>
+    <div class="adj-block">
+      <div class="adj-label">Field holdover card</div>
+      ${holdoverTable}
+    </div>
+    <div class="adj-block">
+      <div class="adj-label">Trajectory table (25 yd steps)</div>
+      <div class="scroll-x">
+      <table>
+        <thead><tr>
+          <th>Range</th><th>V (fps)</th><th>Drop (in)</th><th>Drop (MOA)</th>
+          <th>Drift (in)</th><th>Drift (MOA)</th><th>TOF (s)</th>
+        </tr></thead>
+        <tbody>${rows.join('')}</tbody>
+      </table>
+      </div>
+    </div>
+  `;
+});
+
+/* ============================================================
+   TAB SWITCHING + TOGGLES
+   ============================================================ */
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab-section').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab).classList.add('active');
+  });
+});
+
+document.querySelectorAll('.toggle').forEach(group => {
+  const targetId = group.dataset.toggle;
+  group.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      group.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      document.getElementById(targetId).value = btn.dataset.value;
+    });
+  });
+});
+
+/* ============================================================
+   WIND CLOCK — touch / drag rotatable arrow
+   ============================================================ */
+(function() {
+  const svg = document.getElementById('wind-clock-svg');
+  const arrow = document.getElementById('wind-arrow');
+  const ticksGroup = document.getElementById('wind-clock-ticks');
+  const labelsGroup = document.getElementById('wind-clock-labels');
+  const clockDisplay = document.getElementById('wind-clock-display');
+  const degDisplay = document.getElementById('wind-deg-display');
+  const hidden = document.getElementById('b-wind-clock');
+  const cx = 110, cy = 110;
+
+  // Generate hour ticks and labels
+  for (let h = 1; h <= 12; h++) {
+    const angle = (h / 12) * 2 * Math.PI - Math.PI / 2;   // 12 at top
+    const rOuter = 100, rInner = h % 3 === 0 ? 88 : 93;
+    const x1 = cx + rOuter * Math.cos(angle);
+    const y1 = cy + rOuter * Math.sin(angle);
+    const x2 = cx + rInner * Math.cos(angle);
+    const y2 = cy + rInner * Math.sin(angle);
+    const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    tick.setAttribute('x1', x1); tick.setAttribute('y1', y1);
+    tick.setAttribute('x2', x2); tick.setAttribute('y2', y2);
+    tick.setAttribute('stroke', h % 3 === 0 ? 'var(--text)' : 'var(--muted)');
+    tick.setAttribute('stroke-width', h % 3 === 0 ? '2' : '1');
+    ticksGroup.appendChild(tick);
+
+    const lblR = 73;
+    const lx = cx + lblR * Math.cos(angle);
+    const ly = cy + lblR * Math.sin(angle) + 4;
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    lbl.setAttribute('x', lx); lbl.setAttribute('y', ly);
+    lbl.setAttribute('text-anchor', 'middle');
+    lbl.setAttribute('font-size', h % 3 === 0 ? '14' : '11');
+    lbl.setAttribute('font-weight', h % 3 === 0 ? '700' : '500');
+    lbl.setAttribute('fill', h % 3 === 0 ? 'var(--text)' : 'var(--muted)');
+    lbl.textContent = h;
+    labelsGroup.appendChild(lbl);
+  }
+
+  function setWind(clockValue) {
+    // clockValue: 0..12 (where 12 == 0 == top)
+    let cv = ((clockValue % 12) + 12) % 12;   // wrap
+    if (cv === 0) cv = 12;
+    const degrees = (cv / 12) * 360;
+    arrow.setAttribute('transform', `rotate(${degrees} ${cx} ${cy})`);
+    hidden.value = cv;
+    // Display nearest half-hour for readability
+    const rounded = Math.round(cv * 2) / 2;
+    const display = rounded === 12 || rounded === 0 ? '12' :
+                    Number.isInteger(rounded) ? `${rounded}` : `${rounded.toFixed(1)}`;
+    clockDisplay.textContent = `${display} o'clock`;
+    degDisplay.textContent = `${Math.round(degrees)}°`;
+  }
+
+  function pointToClock(clientX, clientY) {
+    const rect = svg.getBoundingClientRect();
+    // Convert client coords → SVG viewBox coords (220×220)
+    const sx = ((clientX - rect.left) / rect.width) * 220;
+    const sy = ((clientY - rect.top) / rect.height) * 220;
+    const dx = sx - cx, dy = sy - cy;
+    if (dx === 0 && dy === 0) return null;
+    // Math angle from +x, CCW. SVG +y is down so atan2(dy,dx) gives angle in screen coords.
+    let theta = Math.atan2(dy, dx);            // -π..π, 0 = +x (3 o'clock)
+    let clockAngle = theta + Math.PI / 2;      // shift so 0 = top (12 o'clock)
+    if (clockAngle < 0) clockAngle += 2 * Math.PI;
+    return clockAngle * 12 / (2 * Math.PI);    // 0..12
+  }
+
+  let dragging = false;
+  function onPointer(e) {
+    if (e.pointerType === 'mouse' && e.buttons === 0 && e.type !== 'pointerdown') return;
+    const cv = pointToClock(e.clientX, e.clientY);
+    if (cv === null) return;
+    // Snap to nearest half-hour
+    const snapped = Math.round(cv * 2) / 2;
+    setWind(snapped);
+  }
+  svg.addEventListener('pointerdown', e => {
+    dragging = true;
+    svg.setPointerCapture(e.pointerId);
+    onPointer(e);
+    e.preventDefault();
+  });
+  svg.addEventListener('pointermove', e => {
+    if (dragging) onPointer(e);
+  });
+  svg.addEventListener('pointerup', e => {
+    dragging = false;
+    try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
+  });
+  svg.addEventListener('pointercancel', () => { dragging = false; });
+
+  // Initialize at 3 o'clock (matches default)
+  setWind(3);
+})();
+
+/* ============================================================
+   PROFILES — 5 user-editable slots in localStorage
+   ============================================================ */
+(function() {
+  const KEY = 'ballistic_profiles_v1';
+  const SLOTS = 5;
+  const FIELDS = ['mv', 'bc', 'weight', 'sight-height', 'zero', 'vital'];
+  const ID = { mv: 'b-mv', bc: 'b-bc', weight: 'b-weight',
+               'sight-height': 'b-sight-height', zero: 'b-zero', vital: 'b-vital' };
+
+  // Default seed: slot 1 = .243 95gr SST. Other slots empty placeholders.
+  const seed = [
+    { name: '.243 95gr SST Superformance',
+      values: { mv:3185, bc:0.200, weight:95, 'sight-height':1.5, zero:200, vital:4 } },
+    { name: '', values: null },
+    { name: '', values: null },
+    { name: '', values: null },
+    { name: '', values: null },
+  ];
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return JSON.parse(JSON.stringify(seed));
+      const data = JSON.parse(raw);
+      if (!Array.isArray(data) || data.length !== SLOTS) return JSON.parse(JSON.stringify(seed));
+      return data;
+    } catch (_) { return JSON.parse(JSON.stringify(seed)); }
+  }
+
+  function save(data) {
+    try { localStorage.setItem(KEY, JSON.stringify(data)); }
+    catch (e) { console.warn('Could not save profiles:', e); }
+  }
+
+  let profiles = load();
+
+  const sel = document.getElementById('profile-select');
+  const nameInput = document.getElementById('profile-name');
+  const loadBtn = document.getElementById('profile-load');
+  const saveBtn = document.getElementById('profile-save');
+
+  function refreshDropdown() {
+    sel.innerHTML = '';
+    profiles.forEach((p, i) => {
+      const o = document.createElement('option');
+      o.value = i;
+      const label = p.name ? `${i + 1}. ${p.name}` : `${i + 1}. (empty)`;
+      o.textContent = label;
+      sel.appendChild(o);
+    });
+  }
+  refreshDropdown();
+  sel.value = '0';
+  nameInput.value = profiles[0].name || '';
+
+  sel.addEventListener('change', () => {
+    const i = parseInt(sel.value, 10);
+    nameInput.value = profiles[i].name || '';
+  });
+
+  loadBtn.addEventListener('click', () => {
+    const i = parseInt(sel.value, 10);
+    const p = profiles[i];
+    if (!p.values) {
+      alert('That slot is empty. Set the load values and tap "Save Current" to populate it.');
+      return;
+    }
+    for (const f of FIELDS) {
+      if (p.values[f] !== undefined && p.values[f] !== null) {
+        document.getElementById(ID[f]).value = p.values[f];
+      }
+    }
+    nameInput.value = p.name || '';
+  });
+
+  saveBtn.addEventListener('click', () => {
+    const i = parseInt(sel.value, 10);
+    const name = nameInput.value.trim() || `Profile ${i + 1}`;
+    const values = {};
+    for (const f of FIELDS) values[f] = parseFloat(document.getElementById(ID[f]).value);
+    profiles[i] = { name, values };
+    save(profiles);
+    refreshDropdown();
+    sel.value = String(i);
+    saveBtn.textContent = 'Saved ✓';
+    setTimeout(() => { saveBtn.textContent = 'Save Current'; }, 1500);
+  });
+})();
+
+/* ============================================================
+   METRIC CONVERTER — bidirectional live conversion
+   ============================================================ */
+(function() {
+  const PRECISION = 4;
+
+  function fmt(n) {
+    if (!Number.isFinite(n)) return '';
+    // Use up to PRECISION significant decimals but trim trailing zeros
+    const s = n.toPrecision(6);
+    return parseFloat(s).toString();
+  }
+
+  // Pair up two inputs with conversion functions in each direction.
+  function pair(idA, idB, aToB, bToA) {
+    const a = document.getElementById(idA);
+    const b = document.getElementById(idB);
+    let updating = false;
+    a.addEventListener('input', () => {
+      if (updating) return;
+      updating = true;
+      const v = parseFloat(a.value);
+      b.value = Number.isFinite(v) ? fmt(aToB(v)) : '';
+      updating = false;
+    });
+    b.addEventListener('input', () => {
+      if (updating) return;
+      updating = true;
+      const v = parseFloat(b.value);
+      a.value = Number.isFinite(v) ? fmt(bToA(v)) : '';
+      updating = false;
+    });
+  }
+
+  // Distance: yd ↔ m
+  pair('cv-yd', 'cv-m', y => y * 0.9144, m => m / 0.9144);
+  // Velocity: fps ↔ m/s
+  pair('cv-fps', 'cv-mps', f => f * 0.3048, m => m / 0.3048);
+  // Mass: gr ↔ g
+  pair('cv-gr', 'cv-g', gr => gr * 0.06479891, g => g / 0.06479891);
+  // Energy: ft·lb ↔ J
+  pair('cv-ftlb', 'cv-j', f => f * 1.355817948, j => j / 1.355817948);
+  // Length: in ↔ mm
+  pair('cv-in', 'cv-mm', i => i * 25.4, m => m / 25.4);
+  // Pressure: inHg ↔ hPa
+  pair('cv-inhg', 'cv-hpa', i => i * 33.8639, h => h / 33.8639);
+  // Temperature: C ↔ F
+  pair('cv-c', 'cv-f', c => c * 9 / 5 + 32, f => (f - 32) * 5 / 9);
+
+  // Angular: range + (MOA, MIL, inches) — three-way coupled
+  (function() {
+    const range = document.getElementById('cv-ang-range');
+    const moa = document.getElementById('cv-moa');
+    const mil = document.getElementById('cv-mil');
+    const inch = document.getElementById('cv-ang-in');
+    let updating = false;
+
+    function recompute(source) {
+      if (updating) return;
+      const r = parseFloat(range.value);
+      if (!Number.isFinite(r) || r <= 0) return;
+      updating = true;
+      let inches;
+      if (source === 'moa') {
+        const v = parseFloat(moa.value);
+        if (!Number.isFinite(v)) { updating = false; return; }
+        inches = v * 1.0472 * r / 100;
+        mil.value = fmt(inches / (3.6 * r / 100));
+        inch.value = fmt(inches);
+      } else if (source === 'mil') {
+        const v = parseFloat(mil.value);
+        if (!Number.isFinite(v)) { updating = false; return; }
+        inches = v * 3.6 * r / 100;
+        moa.value = fmt(inches / (1.0472 * r / 100));
+        inch.value = fmt(inches);
+      } else if (source === 'inch') {
+        const v = parseFloat(inch.value);
+        if (!Number.isFinite(v)) { updating = false; return; }
+        moa.value = fmt(v / (1.0472 * r / 100));
+        mil.value = fmt(v / (3.6 * r / 100));
+      } else if (source === 'range') {
+        // Keep MOA stable, recompute MIL & inches from MOA.
+        const v = parseFloat(moa.value);
+        if (Number.isFinite(v)) {
+          inches = v * 1.0472 * r / 100;
+          mil.value = fmt(inches / (3.6 * r / 100));
+          inch.value = fmt(inches);
+        }
+      }
+      updating = false;
+    }
+
+    moa.addEventListener('input', () => recompute('moa'));
+    mil.addEventListener('input', () => recompute('mil'));
+    inch.addEventListener('input', () => recompute('inch'));
+    range.addEventListener('input', () => recompute('range'));
+  })();
+})();
+</script>
+<script>
+/* offline app: register service worker when hosted over https (no-ops on file://) */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}
+</script>
+</body>
+</html>
