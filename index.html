@@ -728,10 +728,11 @@ function findZeroAngle(mv, bc, sightHeightFt, zeroRangeFt, params) {
 /* ============================================================
    PUBLIC: trajectory at target range
    ============================================================ */
-function computeTrajectory(opts) {
+/* Solve the launch/zero angle ONCE — it depends on rifle/load/zero/atmosphere,
+   NOT on target range, so it can be reused for every range in the card. */
+function solveSetup(opts) {
   const {
-    mv, bc, weightGr, sightHeightIn,
-    zeroYd, targetYd,
+    mv, bc, sightHeightIn, zeroYd,
     tempF, pressureInHg, humidityPct,
     windMph, windClock,
   } = opts;
@@ -740,7 +741,6 @@ function computeTrajectory(opts) {
   const densRatio = airDensityRatio(tempF, pressureInHg, humidityPct);
 
   // Wind from clock position. 12 = headwind, 3 = right→left, 6 = tailwind, 9 = left→right.
-  // Clockwise angle from +x (downrange) to FROM direction:
   const theta = ((windClock % 12) / 12) * 2 * Math.PI;
   const windFps = windMph * 1.46667;
   const wx = -windFps * Math.cos(theta);   // velocity component downrange
@@ -749,19 +749,20 @@ function computeTrajectory(opts) {
   const params = { wx, wy, densRatio, sos, bc };
   const sightHeightFt = sightHeightIn / 12;
   const zeroFt = zeroYd * 3;
-  const targetFt = targetYd * 3;
 
-  // Step 1: find zero angle
   const angle = findZeroAngle(mv, bc, sightHeightFt, zeroFt, params);
+  return { mv, weightGr: opts.weightGr, params, sightHeightFt, angle };
+}
 
-  // Step 2: simulate to target range
-  const { final, time } = simulate(angle, mv, params, sightHeightFt, targetFt);
+/* Simulate to a single target range using an already-solved setup. */
+function trajAt(setup, targetYd) {
+  const targetFt = targetYd * 3;
+  const { final, time } = simulate(setup.angle, setup.mv, setup.params, setup.sightHeightFt, targetFt);
 
-  // Outputs
   const dropIn = -final.z * 12;          // inches below LOS (positive = below)
   const driftIn = final.y * 12;          // positive = right
   const velocityFps = Math.sqrt(final.vx * final.vx + final.vy * final.vy + final.vz * final.vz);
-  const energyFtLb = 0.5 * (weightGr / 7000 / 32.174) * velocityFps * velocityFps;
+  const energyFtLb = 0.5 * (setup.weightGr / 7000 / 32.174) * velocityFps * velocityFps;
 
   return {
     drop_in: dropIn,
@@ -769,9 +770,14 @@ function computeTrajectory(opts) {
     velocity_fps: velocityFps,
     energy_ftlb: energyFtLb,
     tof_s: time,
-    launch_angle_moa: angle * (60 * 180 / Math.PI),
+    launch_angle_moa: setup.angle * (60 * 180 / Math.PI),
     range_yd: targetYd,
   };
+}
+
+/* Convenience wrapper — unchanged external behaviour (solve + single range). */
+function computeTrajectory(opts) {
+  return trajAt(solveSetup(opts), opts.targetYd);
 }
 
 /* ============================================================
@@ -1010,9 +1016,10 @@ document.getElementById('b-calc').addEventListener('click', () => {
     return;
   }
 
-  let result;
+  let setup, result;
   try {
-    result = computeTrajectory(opts);
+    setup = solveSetup(opts);
+    result = trajAt(setup, opts.targetYd);
   } catch (e) {
     out.innerHTML = `<div class="error">Calculation failed: ${e.message}</div>`;
     return;
@@ -1030,7 +1037,7 @@ document.getElementById('b-calc').addEventListener('click', () => {
   for (let r = stepYd; r < opts.targetYd; r += stepYd) stops.push(r);
   stops.push(opts.targetYd);
   for (const r of stops) {
-    const t = computeTrajectory({ ...opts, targetYd: r });
+    const t = trajAt(setup, r);
     rows.push(`<tr>
       <td>${r}</td>
       <td>${t.velocity_fps.toFixed(0)}</td>
@@ -1046,11 +1053,11 @@ document.getElementById('b-calc').addEventListener('click', () => {
   // bullet drops by that many inches below LOS (after the zero).
   function findRangeForDrop(targetDropIn) {
     let lo = opts.zeroYd, hi = 1500;
-    const dropAtHi = computeTrajectory({ ...opts, targetYd: hi }).drop_in;
+    const dropAtHi = trajAt(setup, hi).drop_in;
     if (dropAtHi < targetDropIn) return null;
     for (let i = 0; i < 30; i++) {
       const mid = (lo + hi) / 2;
-      const d = computeTrajectory({ ...opts, targetYd: mid }).drop_in;
+      const d = trajAt(setup, mid).drop_in;
       if (d > targetDropIn) hi = mid; else lo = mid;
       if (Math.abs(hi - lo) < 0.5) break;
     }

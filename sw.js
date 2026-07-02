@@ -3,7 +3,7 @@
    - static assets (icons, manifest): cache-first.
    Saved profiles use localStorage and are unaffected by this cache.
    Bump CACHE when you change files to force a clean refresh. */
-const CACHE = "ballistic-v2";
+const CACHE = "ballistic-v3";
 const ASSETS = [
   "./",
   "./index.html",
