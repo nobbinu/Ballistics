@@ -361,7 +361,17 @@ footer {
           <button class="btn-secondary" id="profile-save" style="margin-top:0;">Save Current</button>
         </div>
       </div>
-      <div class="help">5 slots, stored locally on this device. "Save Current" writes the active load + zero + vital zone into the selected slot.</div>
+      <div class="row">
+        <div class="field">
+          <button class="btn-secondary" id="profile-export" style="margin-top:0;">Export file</button>
+        </div>
+        <div class="field">
+          <button class="btn-secondary" id="profile-import" style="margin-top:0;">Import file</button>
+        </div>
+      </div>
+      <input type="file" id="profile-file" accept=".json,application/json" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;">
+      <div id="profile-status" style="display:none;margin-top:8px;font-size:0.85em;"></div>
+      <div class="help">5 slots, stored locally on this device. "Save Current" writes the active load + zero + vital zone into the selected slot. Export writes all 5 slots to a .json file you keep — the reliable backup if the browser wipes site data.</div>
     </div>
 
     <div class="panel">
@@ -1273,9 +1283,30 @@ document.querySelectorAll('.toggle').forEach(group => {
     } catch (_) { return JSON.parse(JSON.stringify(seed)); }
   }
 
+  function status(msg, isErr) {
+    const el = document.getElementById('profile-status');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.display = msg ? 'block' : 'none';
+    el.style.color = isErr ? '#e0726b' : '#7fd1a6';
+    if (msg && !isErr) setTimeout(() => { if (el.textContent === msg) el.style.display = 'none'; }, 4000);
+  }
+
   function save(data) {
-    try { localStorage.setItem(KEY, JSON.stringify(data)); }
-    catch (e) { console.warn('Could not save profiles:', e); }
+    try {
+      localStorage.setItem(KEY, JSON.stringify(data));
+      // verify the write actually stuck (some blocked contexts fail silently)
+      if (localStorage.getItem(KEY) === null) throw new Error('write did not persist');
+    }
+    catch (e) {
+      console.warn('Could not save profiles:', e);
+      status('⚠ Save failed — browser is blocking site storage. Use Export to keep your profiles in a file.', true);
+    }
+  }
+
+  // ask the browser for durable storage (a request — may be declined; harmless either way)
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
   }
 
   let profiles = load();
@@ -1330,6 +1361,66 @@ document.querySelectorAll('.toggle').forEach(group => {
     sel.value = String(i);
     saveBtn.textContent = 'Saved ✓';
     setTimeout(() => { saveBtn.textContent = 'Save Current'; }, 1500);
+  });
+
+  /* ---------- export / import: profiles as a file you keep ---------- */
+  const exportBtn = document.getElementById('profile-export');
+  const importBtn = document.getElementById('profile-import');
+  const fileInput = document.getElementById('profile-file');
+
+  exportBtn.addEventListener('click', () => {
+    const payload = { app: 'ballistic-calc', format: 1, exported: new Date().toISOString(), profiles };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    a.href = url;
+    a.download = 'ballistic-profiles-' + d.toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    status('Exported. Keep the .json somewhere safe (device or NAS).', false);
+  });
+
+  importBtn.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files[0];
+    fileInput.value = ''; // allow re-importing the same file later
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onerror = () => status('⚠ Could not read that file.', true);
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        // accept the wrapped format or a bare 5-slot array
+        const arr = Array.isArray(data) ? data : data.profiles;
+        if (!Array.isArray(arr) || arr.length !== SLOTS)
+          throw new Error('Expected ' + SLOTS + ' profile slots.');
+        for (const p of arr) {
+          if (typeof p !== 'object' || p === null || typeof p.name !== 'string')
+            throw new Error('Malformed profile entry.');
+          if (p.values !== null) {
+            if (typeof p.values !== 'object') throw new Error('Malformed profile values.');
+            for (const fld of FIELDS) {
+              if (p.values[fld] !== undefined && typeof p.values[fld] !== 'number')
+                throw new Error('Non-numeric value in "' + p.name + '" (' + fld + ').');
+            }
+          }
+        }
+        if (!confirm('Replace all 5 profile slots with the imported file? Current slots will be overwritten.')) return;
+        profiles = arr;
+        save(profiles);
+        refreshDropdown();
+        sel.value = '0';
+        nameInput.value = profiles[0].name || '';
+        status('Imported ' + arr.filter(p => p.values).length + ' profile(s).', false);
+      } catch (e) {
+        status('⚠ Import rejected: ' + e.message + ' Nothing was changed.', true);
+      }
+    };
+    reader.readAsText(f);
   });
 })();
 
